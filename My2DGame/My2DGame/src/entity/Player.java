@@ -2,6 +2,7 @@ package entity;
 
 import main.GamePanel;
 import main.KeyHandler;
+import main.UtilityTool;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -17,6 +18,12 @@ public class Player extends Entity{
     public final int screenX;
     public final int screenY;
     public int hasKey = 0;
+    int standCounter = 0;
+
+    boolean moving = false;
+    int pixelCounter = 0;
+
+//  public boolean dashOn = false;
 
     public Player(GamePanel gp, KeyHandler keyH){
         this.gp = gp;
@@ -26,12 +33,12 @@ public class Player extends Entity{
         screenY = gp.screenHeight / 2  - (gp.tileSize/2);
 
         solidArea = new Rectangle();
-        solidArea.x = 10;
-        solidArea.y = 16;
+        solidArea.x = 1;
+        solidArea.y = 1;
         solidAreaDefaultX = solidArea.x;
         solidAreaDefaultY = solidArea.y;
-        solidArea.width = 28;
-        solidArea.height = 32;
+        solidArea.width = 46;
+        solidArea.height = 46;
 
 
         setDefaultValues();
@@ -46,45 +53,74 @@ public class Player extends Entity{
     }
 
     public void getPlayerImage(){
-        try{
-            up1 = ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/player/boy_up_1.png")));
-            up2 = ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/player/boy_up_2.png")));
-            down1 = ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/player/boy_down_1.png")));
-            down2 = ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/player/boy_down_2.png")));
-            left1 = ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/player/boy_left_1.png")));
-            left2 = ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/player/boy_left_2.png")));
-            right1 = ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/player/boy_right_1.png")));
-            right2 = ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/player/boy_right_2.png")));
-        }catch (IOException e) {
-            e.printStackTrace();
-        }
+
+        up1 = setup("boy_up_1");
+        up2 = setup("boy_up_2");
+        down1 = setup("boy_down_1");
+        down2 = setup("boy_down_2");
+        left1 = setup("boy_left_1");
+        left2 = setup("boy_left_2");
+        right1 = setup("boy_right_1");
+        right2 = setup("boy_right_2");
     }
 
+    public BufferedImage setup(String imageName) {
+        UtilityTool uTool = new UtilityTool();
+        BufferedImage image = null;
+
+        try{
+            image = ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/player/"+imageName+".png")));
+            image = uTool.scaleImage(image, gp.tileSize, gp.tileSize);
+
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+        return image;
+    }
     public void update() {
 
-        if(keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed) {
+        int playerCol = worldX/gp.tileSize;
+        int playerRow = worldY/gp.tileSize;
+        System.out.println("Player Col: "+playerCol);
+        System.out.println("Player Row: "+playerRow);
 
-            if(keyH.upPressed) {
-                direction = "up";
-            }
-            else if(keyH.downPressed) {
-                direction = "down";
-            }
-            else if(keyH.leftPressed) {
-                direction = "left";
-            }
-            else {
-                direction = "right";
-            }
+        int playerTileNum = gp.tileM.mapTileNum[playerCol][playerRow];
+        System.out.println("Player is on number " + playerTileNum + " tile");
+
+        if(!moving) {
+            if (keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed) {
+
+                if (keyH.upPressed) {
+                    direction = "up";
+                } else if (keyH.downPressed) {
+                    direction = "down";
+                } else if (keyH.leftPressed) {
+                    direction = "left";
+                } else {
+                    direction = "right";
+                }
+
+                moving = true;
+
 //          CHECK TILE COLLISION
-            collisionOn = false;
-            gp.cChecker.checkTile(this);
+                collisionOn = false;
+                gp.cChecker.checkTile(this);
 
 //          CHECK OBJECT COLLISION
-            int objIndex = gp.cChecker.checkObject(this, true);
-            pickUpObject(objIndex);
+                int objIndex = gp.cChecker.checkObject(this, true);
+                pickUpObject(objIndex);
+            }
+            else {
+                standCounter++;
+                if (standCounter == 20) {
+                    spriteNum = 1;
+                    standCounter = 0;
+                }
+            }
+        }
 
-//          IF COLLISION IS FALSE, PLAYER CAN MOVE
+        if(moving) {
+            //          IF COLLISION IS FALSE, PLAYER CAN MOVE
             if(!collisionOn) {
                 switch (direction) {
                     case "up" -> worldY -= speed;
@@ -104,8 +140,24 @@ public class Player extends Entity{
                 }
                 spriteCounter = 0;
             }
+
+            pixelCounter += speed;
+
+            if (pixelCounter == 48) {
+                moving = false;
+                pixelCounter = 0;
+            }
         }
+
+/*        if(dashOn) {
+            speed = 8; // you can type any number
+        }
+        if(!dashOn) {
+            speed = 4;
+        }
+*/
     }
+
 
     public void pickUpObject (int i) {
         if(i != 999) {
@@ -125,20 +177,21 @@ public class Player extends Entity{
                         gp.playSE(3);
                         gp.obj[i] = null;
                         hasKey--;
-                        gp.ui.showMessage("Used a key to open the door.");
+                        gp.ui.showMessage("You used a key to open the door.");
                     }
                     else {
-                        gp.ui.showMessage("Door's locked. Need a key ...");
+                        gp.ui.showMessage("This door is locked. Find a key ...");
                     }
-
                     break;
 
                 case "Boots":
+
                     gp.playSE(2);
-                    speed += 1;
+                    speed *= 1.5;
                     gp.obj[i] = null;
-                    gp.ui.showMessage("Found speed socks!");
+                    gp.ui.showMessage("Speed boost!");
                     break;
+
                 case "Chest":
                     gp.ui.gameFinished = true;
                     gp.stopMusic();
@@ -186,10 +239,10 @@ public class Player extends Entity{
                 }
             }
         }
-        g2.drawImage(image, screenX, screenY, gp.tileSize, gp.tileSize, null);
-
+        g2.drawImage(image, screenX, screenY,null);
 
 /*        g2.setColor(Color.white);
-        g2.fillRect(x, y, gp.tileSize, gp.tileSize);*/
+        g2.fillRect(x, y, gp.tileSize, gp.tileSize);
+*/
     }
 }
