@@ -78,14 +78,16 @@ public class Player extends Entity{
         return image;
     }
     public void update() {
-
+/*
         int playerCol = worldX/gp.tileSize;
         int playerRow = worldY/gp.tileSize;
+
         System.out.println("Player Col: "+playerCol);
         System.out.println("Player Row: "+playerRow);
 
         int playerTileNum = gp.tileM.mapTileNum[playerCol][playerRow];
         System.out.println("Player is on number " + playerTileNum + " tile");
+*/
 
         if(!moving) {
             if (keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed) {
